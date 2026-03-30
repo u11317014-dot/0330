@@ -1,55 +1,101 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>動物英文測驗</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>動物英文測驗互動遊戲</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; }
-        #reader { width: 300px; margin: 20px auto; }
-        img { width: 200px; height: 200px; }
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f0f8ff; margin: 0; padding: 20px; }
+        #game-container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        #animal-image { width: 200px; height: 200px; object-fit: cover; border-radius: 10px; margin: 20px 0; }
+        #reader { width: 100%; max-width: 400px; margin: auto; border: 2px solid #333; }
+        .score { font-size: 1.5em; color: #2c3e50; font-weight: bold; }
+        .message { font-size: 1.2em; margin: 10px; height: 1.5em; }
+        button { padding: 10px 20px; font-size: 1em; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; }
     </style>
 </head>
 <body>
-    <h1>動物英文測驗 (第 <span id="qCount">1</span> 題)</h1>
-    <div id="quiz">
-        <img id="animalImg" src="" alt="請稍候">
-        <p id="feedback">請掃描卡片背面的 QR Code</p>
+
+<div id="game-container">
+    <h1>動物英文測驗</h1>
+    <div class="score">得分：<span id="score-val">0</span> / 10</div>
+    <div id="quiz-area">
+        <p>請掃描對應的動物卡片背面！</p>
+        <img id="animal-image" src="" alt="題目圖片">
+        <div class="message" id="feedback"></div>
     </div>
+    
     <div id="reader"></div>
-    <h3>目前得分：<span id="score">0</span></h3>
+    
+    <div id="final-result" style="display:none;">
+        <h2>測驗結束！</h2>
+        <button onclick="location.reload()">再玩一次</button>
+    </div>
+</div>
 
-    <script>
-        const mapping = { "1": "狗", "2": "貓", "3": "牛", "4": "羊" }; // [cite: 37]
-        let score = 0, count = 1, currentId = "";
+<script>
+    const animals = [
+        { id: "1", name: "狗", english: "Dog" },
+        { id: "2", name: "貓", english: "Cat" },
+        { id: "3", name: "牛", english: "Cow" },
+        { id: "4", name: "羊", english: "Sheep" }
+    ];
 
-        function nextQuestion() {
-            if (count > 10) { // [cite: 35]
-                alert("遊戲結束！最終得分：" + score);
-                location.reload();
-                return;
-            }
-            currentId = Math.floor(Math.random() * 4 + 1).toString(); // 隨機出題 [cite: 35]
-            document.getElementById('animalImg').src = `assets/images/${currentId}.png`; // [cite: 36]
-            new Audio(`assets/audio/${currentId}.mp3`).play(); // [cite: 36]
-            document.getElementById('qCount').innerText = count;
+    let currentQuestion = 0;
+    let score = 0;
+    let currentAnimal = null;
+    let isProcessing = false;
+
+    // 初始化題目
+    function nextQuestion() {
+        if (currentQuestion >= 10) {
+            document.getElementById('quiz-area').style.display = 'none';
+            document.getElementById('reader').style.display = 'none';
+            document.getElementById('final-result').style.display = 'block';
+            return;
         }
 
-        function onScanSuccess(decodedText) { // [cite: 38]
-            if (decodedText === currentId) {
-                score++;
-                document.getElementById('score').innerText = score;
-                alert("答對了！");
-                count++;
+        isProcessing = false;
+        document.getElementById('feedback').innerText = "";
+        currentAnimal = animals[Math.floor(Math.random() * animals.length)];
+        
+        // 設定圖片路徑 [cite: 36]
+        document.getElementById('animal-image').src = `assets/images/${currentAnimal.id}.png`;
+        
+        // 播放提示音 (可選：出題時自動播放該動物英文) [cite: 36]
+        let audio = new Audio(`assets/audio/${currentAnimal.id}.mp3`);
+        audio.play();
+    }
+
+    // 處理掃描結果 [cite: 38]
+    function onScanSuccess(decodedText) {
+        if (isProcessing) return;
+
+        if (decodedText === currentAnimal.id) {
+            isProcessing = true;
+            score++;
+            document.getElementById('score-val').innerText = score;
+            document.getElementById('feedback').innerText = "✅ 正確！太棒了！";
+            document.getElementById('feedback').style.color = "green";
+            
+            setTimeout(() => {
+                currentQuestion++;
                 nextQuestion();
-            } else {
-                alert("再試一次！這是 " + mapping[currentId] + " 嗎？");
-            }
+            }, 2000);
+        } else {
+            document.getElementById('feedback').innerText = "❌ 不對喔，再試試看！";
+            document.getElementById('feedback').style.color = "red";
         }
+    }
 
-        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-        html5QrcodeScanner.render(onScanSuccess);
-        nextQuestion();
-    </script>
+    // 啟動相機掃描
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render(onScanSuccess);
+
+    // 開始第一題
+    nextQuestion();
+</script>
+
 </body>
 </html>
